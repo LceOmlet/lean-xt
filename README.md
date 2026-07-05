@@ -66,3 +66,39 @@ Latest verified run:
 Compared with the apply-only generator, this v1 line increases goal-change
 coverage from 3 to 10 goal bridge schemas while keeping every edge Lean
 verified.
+
+## v2 schema-driven generator
+
+The v2 generator is `scripts/expand_schema_forest.py`.  Unlike the v1 catalog,
+the script does not hard-code domain objects such as a specific theorem family
+or Mathlib predicate.  It uses LeanDojo-traced theorem statements to extract:
+
+- original parameter binders
+- explicit proposition hypotheses
+- the theorem goal
+- typed local propositions such as `x != 0`, `x = y`, and `x != y`
+
+It then instantiates generic theorem-update schemas:
+
+| Schema | Bridge form |
+|---|---|
+| `and_projection` | condition strengthening: `P /\ R -> P` |
+| `or_intro` | goal weakening: `Q -> Q \/ R` |
+| `not_not_intro` | goal weakening: `Q -> not not Q` |
+
+As in v1, every instantiated schema is first checked as a Lean probe theorem,
+and the expanded forest is checked again with `lake build`.
+
+Latest verified v2 run:
+
+| Metric | Value |
+|---|---:|
+| Mode | `schema_v2` |
+| Generic schemas | 3 |
+| Condition / goal probes | 44 / 110 |
+| Trees | 100 |
+| Depth | 3 |
+| Verified nodes / edges | 1366 / 1366 |
+| Condition / goal delta schemas | 44 / 110 |
+| Empty delta edges | 0 |
+| Build result | success |
