@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lean-xt"
+version = "0.1.0"
+description = "Verified Lean theorem condition and goal mutation utilities."
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+include = ["lean_xt*"]

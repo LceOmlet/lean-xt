@@ -1,0 +1,54 @@
+{
+  "repo_path": "/home/chen/alchemy_tree_forest_run/depth3_lean420_clean",
+  "commit": "bb1fe98b37ed2780ce69867e9be9f59a45a79782",
+  "parent": "alchemy_tree_t0",
+  "file_path": "AlchemyTree/Depth3.lean",
+  "ok": true,
+  "build_returncode": 0,
+  "build_output_tail": "Build completed successfully.\n",
+  "variants": [
+    {
+      "child_name": "alchemy_tree_t0_condition_strengthened",
+      "parent_name": "alchemy_tree_t0",
+      "mutation_type": "condition_strengthen",
+      "condition_delta": {
+        "old_hypothesis": "hab",
+        "new_hypotheses": [
+          "hrel : IsRelPrime a b"
+        ],
+        "bridge_tactic": "exact (Nat.coprime_iff_isRelPrime).2 hrel"
+      },
+      "goal_delta": null,
+      "text": "theorem alchemy_tree_t0_condition_strengthened {a b : ℕ} (hrel : IsRelPrime a b) :\n    Disjoint (a.divisors.filter IsPrimePow) (b.divisors.filter IsPrimePow) := by\n  apply alchemy_tree_t0\n  all_goals first\n    | assumption\n    | exact (Nat.coprime_iff_isRelPrime).2 hrel"
+    },
+    {
+      "child_name": "alchemy_tree_t0_goal_weakened",
+      "parent_name": "alchemy_tree_t0",
+      "mutation_type": "goal_weaken",
+      "condition_delta": null,
+      "goal_delta": {
+        "new_goal": "forall {n : Nat}, n ∈ a.divisors.filter IsPrimePow -> n ∈ b.divisors.filter IsPrimePow -> False",
+        "bridge_tactic": "apply Finset.disjoint_left.mp"
+      },
+      "text": "theorem alchemy_tree_t0_goal_weakened {a b : ℕ} (hab : a.Coprime b) :\n    forall {n : Nat}, n ∈ a.divisors.filter IsPrimePow -> n ∈ b.divisors.filter IsPrimePow -> False := by\n  apply Finset.disjoint_left.mp\n  apply alchemy_tree_t0\n  all_goals assumption"
+    },
+    {
+      "child_name": "alchemy_tree_t0_condition_strengthened_goal_weakened",
+      "parent_name": "alchemy_tree_t0",
+      "mutation_type": "condition_strengthen_goal_weaken",
+      "condition_delta": {
+        "old_hypothesis": "hab",
+        "new_hypotheses": [
+          "hrel : IsRelPrime a b"
+        ],
+        "bridge_tactic": "exact (Nat.coprime_iff_isRelPrime).2 hrel"
+      },
+      "goal_delta": {
+        "new_goal": "forall {n : Nat}, n ∈ a.divisors.filter IsPrimePow -> n ∈ b.divisors.filter IsPrimePow -> False",
+        "bridge_tactic": "apply Finset.disjoint_left.mp"
+      },
+      "text": "theorem alchemy_tree_t0_condition_strengthened_goal_weakened {a b : ℕ} (hrel : IsRelPrime a b) :\n    forall {n : Nat}, n ∈ a.divisors.filter IsPrimePow -> n ∈ b.divisors.filter IsPrimePow -> False := by\n  apply Finset.disjoint_left.mp\n  apply alchemy_tree_t0\n  all_goals first\n    | assumption\n    | exact (Nat.coprime_iff_isRelPrime).2 hrel"
+    }
+  ],
+  "seconds": 1.114
+}
