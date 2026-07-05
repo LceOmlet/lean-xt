@@ -32,3 +32,37 @@ The latest validation generated and verified three children from `alchemy_tree_t
 - combined condition-strengthening plus goal-weakening
 
 Result: `lake build` completed successfully.
+
+## v1 interrupt-following / theorem-update benchmark generator
+
+The v1 benchmark generator is `scripts/expand_tactic_bridge_forest.py`.
+It builds verified theorem-update trees for interrupt-following experiments:
+
+```text
+T0 original theorem
+ -> interrupt: update condition and/or goal
+ -> child theorem with Lean-verified bridge proof
+ -> repeat to depth 3
+```
+
+This version allows only the Lean tactics needed for theorem-update bridges:
+`apply`, `exact`, and `assumption`.  Each candidate bridge is first emitted as a
+Lean probe theorem and accepted only after `lake build`; the expanded forest is
+then verified again with `lake build`.
+
+Latest verified run:
+
+| Metric | Value |
+|---|---:|
+| Mode | `apply_exact_assumption` |
+| Bridge probes | 25 |
+| Trees | 100 |
+| Depth | 3 |
+| Verified nodes / edges | 1326 / 1326 |
+| Leaf count range | 2-12 |
+| Empty delta edges | 0 |
+| Build result | success |
+
+Compared with the apply-only generator, this v1 line increases goal-change
+coverage from 3 to 10 goal bridge schemas while keeping every edge Lean
+verified.
