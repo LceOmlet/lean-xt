@@ -1,0 +1,110 @@
+{
+  "mode": "alchemy_style_bridge_mining",
+  "repo_path": "/home/chen/alchemy_tree_forest_run/depth3_lean420_clean",
+  "commit": "bb1fe98b37ed2780ce69867e9be9f59a45a79782",
+  "parent": "alchemy_tree_t0",
+  "ok": true,
+  "candidate_count": 16,
+  "candidates": [
+    "Disjoint",
+    "IsPrimePow",
+    "Finset.disjoint_left",
+    "Finset.mem_filter",
+    "and_imp",
+    "Nat.mem_divisors",
+    "not_and",
+    "Nat.eq_one_of_dvd_coprimes",
+    "alchemy_tree_a1",
+    "IsRelPrime",
+    "Nat.coprime_iff_isRelPrime",
+    "alchemy_tree_a2",
+    "Nat.gcd",
+    "Nat.coprime_iff_gcd_eq_one",
+    "alchemy_tree_a3",
+    "Nat.coprime_comm"
+  ],
+  "attempts": {
+    "condition_rw": 16,
+    "goal_rw": 16,
+    "goal_apply": 48
+  },
+  "condition_rw_count": 3,
+  "goal_rw_count": 2,
+  "goal_apply_invocable_count": 1,
+  "probe_build_returncode": 0,
+  "probe_build_output_tail": "✔ [798/800] Built AlchemyTree.Depth3\n✔ [799/800] Built AlchemyTree\nBuild completed successfully.\n",
+  "context": {
+    "params": [
+      "{a b : ℕ}"
+    ],
+    "hypotheses": [
+      {
+        "name": "hab",
+        "prop": "a.Coprime b"
+      }
+    ],
+    "goal": "Disjoint (a.divisors.filter IsPrimePow) (b.divisors.filter IsPrimePow)"
+  },
+  "condition_deltas": [
+    {
+      "kind": "condition_rw",
+      "candidate": "Nat.coprime_iff_isRelPrime",
+      "dojo_tactic": "rw [Nat.coprime_iff_isRelPrime] at hab",
+      "hypothesis": "hab",
+      "hyp_index": 0,
+      "old": "a.Coprime b",
+      "new": "IsRelPrime a b",
+      "bridge_direction": "new_condition -> old_condition"
+    },
+    {
+      "kind": "condition_rw",
+      "candidate": "Nat.coprime_iff_gcd_eq_one",
+      "dojo_tactic": "rw [Nat.coprime_iff_gcd_eq_one] at hab",
+      "hypothesis": "hab",
+      "hyp_index": 0,
+      "old": "a.Coprime b",
+      "new": "a.gcd b = 1",
+      "bridge_direction": "new_condition -> old_condition"
+    },
+    {
+      "kind": "condition_rw",
+      "candidate": "Nat.coprime_comm",
+      "dojo_tactic": "rw [Nat.coprime_comm] at hab",
+      "hypothesis": "hab",
+      "hyp_index": 0,
+      "old": "a.Coprime b",
+      "new": "b.Coprime a",
+      "bridge_direction": "new_condition -> old_condition"
+    }
+  ],
+  "goal_deltas": [
+    {
+      "kind": "goal_rw",
+      "candidate": "Disjoint",
+      "dojo_tactic": "rw [Disjoint]",
+      "old": "Disjoint (a.divisors.filter IsPrimePow) (b.divisors.filter IsPrimePow)",
+      "new": "∀ ⦃x : Finset ℕ⦄, x ≤ Finset.filter IsPrimePow a.divisors → x ≤ Finset.filter IsPrimePow b.divisors → x ≤ ⊥",
+      "bridge_direction": "old_goal -> new_goal"
+    },
+    {
+      "kind": "goal_rw",
+      "candidate": "Finset.disjoint_left",
+      "dojo_tactic": "rw [Finset.disjoint_left]",
+      "old": "Disjoint (a.divisors.filter IsPrimePow) (b.divisors.filter IsPrimePow)",
+      "new": "∀ ⦃a_1 : ℕ⦄, a_1 ∈ Finset.filter IsPrimePow a.divisors → a_1 ∉ Finset.filter IsPrimePow b.divisors",
+      "bridge_direction": "old_goal -> new_goal"
+    }
+  ],
+  "apply_invocable": [
+    {
+      "kind": "goal_apply_precondition",
+      "candidate": "Finset.disjoint_left.mpr",
+      "dojo_tactic": "apply Finset.disjoint_left.mpr",
+      "old": "Disjoint (a.divisors.filter IsPrimePow) (b.divisors.filter IsPrimePow)",
+      "new_subgoal": "∀ ⦃a_1 : ℕ⦄, a_1 ∈ Finset.filter IsPrimePow a.divisors → a_1 ∉ Finset.filter IsPrimePow b.divisors",
+      "bridge_direction": "new_subgoal -> old_goal",
+      "state_after": "a b : ℕ\nhab : a.Coprime b\n⊢ ∀ ⦃a_1 : ℕ⦄, a_1 ∈ Finset.filter IsPrimePow a.divisors → a_1 ∉ Finset.filter IsPrimePow b.divisors"
+    }
+  ],
+  "seconds": 10.26
+}
