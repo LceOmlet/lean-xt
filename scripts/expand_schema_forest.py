@@ -16,6 +16,8 @@ from lean_xt.leandojo import find_theorem
 
 AND = "\u2227"
 OR = "\u2228"
+IFF = "\u2194"
+MEM = "\u2208"
 NE = "\u2260"
 NOT = "\u00ac"
 
@@ -29,6 +31,7 @@ class Hypothesis:
 @dataclass(frozen=True)
 class Context:
     params: tuple[str, ...]
+    terms: tuple[tuple[str, str], ...]
     hypotheses: tuple[Hypothesis, ...]
     goal: str
     extra_props: tuple[str, ...]
@@ -115,11 +118,94 @@ def theorem_context(traced_theorem) -> Context:
         for rhs, rhs_type in typed_names[i + 1:]:
             if lhs_type == rhs_type and lhs_type:
                 extra_props.extend([f"{lhs} = {rhs}", f"{lhs} {NE} {rhs}"])
-    return Context(tuple(params), tuple(hypotheses), goal, tuple(dict.fromkeys(extra_props)))
+    return Context(tuple(params), tuple(typed_names), tuple(hypotheses), goal, tuple(dict.fromkeys(extra_props)))
 
 
 def paren(prop: str) -> str:
     return f"({prop})"
+
+
+def params_for(ctx: Context, texts: list[str]) -> str:
+    body = "\n".join(texts)
+    binders = []
+    for chunk in ctx.params:
+        names, typ = split_binder(chunk)
+        used = [name for name in names if re.search(rf"\b{re.escape(name)}\b", body)]
+        if used:
+            binders.append(f"{chunk[0]}{' '.join(used)} : {typ}{chunk[-1]}")
+    return " ".join(binders)
+
+
+def strip_outer_parens(text: str) -> str:
+    text = text.strip()
+    while text.startswith("(") and text.endswith(")"):
+        depth = 0
+        for idx, ch in enumerate(text):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0 and idx != len(text) - 1:
+                    return text
+        text = text[1:-1].strip()
+    return text
+
+
+def split_top(text: str, sep: str) -> Optional[tuple[str, str]]:
+    depth = 0
+    for idx, ch in enumerate(text):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == sep and depth == 0:
+            return text[:idx].strip(), text[idx + 1:].strip()
+    return None
+
+
+def app_args(text: str) -> Optional[tuple[str, list[str]]]:
+    text = strip_outer_parens(text)
+    match = re.match(r"^([A-Za-z_][A-Za-z0-9_'.]*)\s+(.+)$", text)
+    if not match:
+        return None
+    head, rest = match.groups()
+    args = []
+    while rest.strip():
+        rest = rest.strip()
+        if rest.startswith("("):
+            depth = 0
+            for idx, ch in enumerate(rest):
+                if ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                    if depth == 0:
+                        args.append(rest[:idx + 1])
+                        rest = rest[idx + 1:]
+                        break
+            else:
+                return None
+        else:
+            piece, _, rest = rest.partition(" ")
+            args.append(piece)
+    return head, args
+
+
+def parse_forall(goal: str) -> Optional[tuple[str, Optional[str], str]]:
+    goal = strip_outer_parens(goal)
+    match = re.match(r"^forall\s+([A-Za-z_][A-Za-z0-9_']*)\s*:\s*([^,]+),\s*(.+)$", goal)
+    if match:
+        var, typ, body = match.groups()
+        return var, normalize_type(typ), body.strip()
+    match = re.match(r"^forall\s+([A-Za-z_][A-Za-z0-9_']*)\s*,\s*(.+)$", goal)
+    if match:
+        var, body = match.groups()
+        return var, None, body.strip()
+    return None
+
+
+def instantiate_var(body: str, var: str, term: str) -> str:
+    return re.sub(rf"\b{re.escape(var)}\b", term, body)
 
 
 def condition_bridges(ctx: Context, conditions: tuple[str, ...]) -> list[Bridge]:
@@ -128,20 +214,60 @@ def condition_bridges(ctx: Context, conditions: tuple[str, ...]) -> list[Bridge]
         for extra in ctx.extra_props:
             source = f"{paren(prop)} {AND} {paren(extra)}"
             bridges.append(Bridge("and_projection", source, prop, ("exact hcond.1",), hyp_index))
+            source = f"({paren(extra)} {IFF} {paren(prop)}) {AND} {paren(extra)}"
+            bridges.append(Bridge("iff_condition_transport", source, prop, ("exact hcond.1.mp hcond.2",), hyp_index))
     return bridges
 
 
+def relation_goal_bridges(goal: str) -> list[Bridge]:
+    parsed = app_args(goal)
+    if parsed is None:
+        return []
+    head, args = parsed
+    if head != "Disjoint" or len(args) != 2:
+        return []
+    left, right = args
+    return [
+        Bridge("symmetric_relation_goal", f"Disjoint {right} {left}", goal, ("exact hgoal.symm",)),
+        Bridge(
+            "pointwise_goal_unfold",
+            f"forall x, x {MEM} {left} -> x {MEM} {right} -> False",
+            goal,
+            ("exact fun x hx hy => (Finset.disjoint_left.mp hgoal) hx hy",),
+        ),
+    ]
+
+
 def goal_bridges(ctx: Context, goal: str) -> list[Bridge]:
-    bridges = [Bridge("not_not_intro", f"{NOT}{NOT}{paren(goal)}", goal, ("exact fun hnot => hnot hgoal",))]
+    bridges = [
+        Bridge("not_not_intro", f"{NOT}{NOT}{paren(goal)}", goal, ("exact fun hnot => hnot hgoal",)),
+        Bridge("and_true_intro", f"{paren(goal)} {AND} True", goal, ("exact \u27e8hgoal, True.intro\u27e9",)),
+    ]
+    split_and = split_top(strip_outer_parens(goal), AND)
+    if split_and:
+        left, right = split_and
+        bridges.append(Bridge("and_goal_projection_left", left, goal, ("exact hgoal.1",)))
+        if strip_outer_parens(right) != "True":
+            bridges.append(Bridge("and_goal_projection_right", right, goal, ("exact hgoal.2",)))
+    forall_parts = parse_forall(goal)
+    if forall_parts:
+        var, typ, body = forall_parts
+        for term, term_type in ctx.terms:
+            if typ is None or normalize_type(typ) == term_type:
+                bridges.append(Bridge("forall_specialization", instantiate_var(body, var, term), goal, (f"exact hgoal {term}",)))
+    bridges.extend(relation_goal_bridges(goal))
     for extra in ctx.extra_props:
-        bridges.append(Bridge("or_intro", f"{paren(goal)} {OR} {paren(extra)}", goal, ("exact Or.inl hgoal",)))
+        schema = "nested_or_intro" if split_top(strip_outer_parens(goal), OR) else "or_intro"
+        bridges.append(Bridge(schema, f"{paren(goal)} {OR} {paren(extra)}", goal, ("exact Or.inl hgoal",)))
+        bridges.append(Bridge("iff_goal_transport", f"({paren(goal)} {IFF} {paren(extra)}) -> {paren(extra)}", goal, ("exact fun hiff => hiff.mp hgoal",)))
+    bridges.append(Bridge("exists_intro_unit", f"Exists fun _ : Unit => {paren(goal)}", goal, ("exact \u27e8(), hgoal\u27e9",)))
     return bridges
 
 
 def candidate_bridges(ctx: Context, parent: Node):
     conds = condition_bridges(ctx, parent.conditions)
     goals = goal_bridges(ctx, parent.goal)
-    candidates = [(c, None) for c in conds] + [(None, g) for g in goals]
+    candidates = [(None, g) for g in goals] + [(c, None) for c in conds]
     candidates += [(c, g) for c in conds for g in goals]
     return candidates
 
@@ -153,7 +279,28 @@ def width(tree: int, depth: int, leaf: int) -> int:
 def choose(candidates, tree: int, depth: int, leaf: int):
     count = min(width(tree, depth, leaf), len(candidates))
     start = (tree * 13 + depth * 7 + leaf) % len(candidates)
-    return [candidates[(start + i) % len(candidates)] for i in range(count)]
+    rotated = [candidates[(start + i) % len(candidates)] for i in range(len(candidates))]
+    picked, seen = [], set()
+    priority = {"forall_specialization", "and_goal_projection_left", "and_goal_projection_right"}
+    for cond_bridge, goal_bridge in rotated:
+        if goal_bridge is None or goal_bridge.schema not in priority:
+            continue
+        key = (None if cond_bridge is None else cond_bridge.schema, goal_bridge.schema)
+        if key not in seen:
+            picked.append((cond_bridge, goal_bridge))
+            seen.add(key)
+            if len(picked) == count:
+                return picked
+    for cond_bridge, goal_bridge in rotated:
+        key = (None if cond_bridge is None else cond_bridge.schema, None if goal_bridge is None else goal_bridge.schema)
+        if key in seen:
+            continue
+        picked.append((cond_bridge, goal_bridge))
+        seen.add(key)
+        if len(picked) == count:
+            return picked
+    picked.extend(candidate for candidate in rotated if candidate not in picked)
+    return picked[:count]
 
 
 def mutation_type(cond_bridge: Optional[Bridge], goal_bridge: Optional[Bridge]) -> str:
@@ -199,15 +346,17 @@ def theorem_text(ctx: Context, node: Node) -> str:
 def bridge_probe_text(ctx: Context, conds: list[Bridge], goals: list[Bridge]) -> str:
     blocks = []
     for idx, bridge in enumerate(conds):
+        params = params_for(ctx, [bridge.source, bridge.target])
         lines = [
-            f"theorem xt_schema_probe_cond_{idx}_{safe_label(bridge.schema)} {' '.join(ctx.params)} (hcond : {bridge.source}) :",
+            f"theorem xt_schema_probe_cond_{idx}_{safe_label(bridge.schema)} {params} (hcond : {bridge.source}) :",
             f"    {bridge.target} := by",
         ]
         lines.extend("  " + tactic for tactic in bridge.tactics)
         blocks.append("\n".join(lines))
     for idx, bridge in enumerate(goals):
+        params = params_for(ctx, [bridge.source, bridge.target])
         lines = [
-            f"theorem xt_schema_probe_goal_{idx}_{safe_label(bridge.schema)} {' '.join(ctx.params)} (hgoal : {bridge.target}) :",
+            f"theorem xt_schema_probe_goal_{idx}_{safe_label(bridge.schema)} {params} (hgoal : {bridge.target}) :",
             f"    {bridge.source} := by",
         ]
         lines.extend("  " + tactic for tactic in bridge.tactics)
@@ -308,6 +457,7 @@ def main() -> int:
             "schema_names": sorted({b.schema for b in [*conds, *goals]}),
             "context": {
                 "params": list(ctx.params),
+                "terms": [{"name": name, "type": typ} for name, typ in ctx.terms],
                 "hypotheses": [{"name": h.name, "prop": h.prop} for h in ctx.hypotheses],
                 "goal": ctx.goal,
                 "extra_props": list(ctx.extra_props),

@@ -69,22 +69,32 @@ verified.
 
 ## v2 schema-driven generator
 
-The v2 generator is `scripts/expand_schema_forest.py`.  Unlike the v1 catalog,
-the script does not hard-code domain objects such as a specific theorem family
-or Mathlib predicate.  It uses LeanDojo-traced theorem statements to extract:
+The v2 generator is `scripts/expand_schema_forest.py`.  Unlike the v1 theorem
+catalog, the script does not hard-code a specific root theorem family.  It uses
+LeanDojo-traced theorem statements to extract:
 
 - original parameter binders
 - explicit proposition hypotheses
 - the theorem goal
 - typed local propositions such as `x != 0`, `x = y`, and `x != y`
 
-It then instantiates generic theorem-update schemas:
+It then instantiates generic theorem-update schemas plus a small relation-level
+registry for common theorem shapes:
 
 | Schema | Bridge form |
 |---|---|
 | `and_projection` | condition strengthening: `P /\ R -> P` |
+| `iff_condition_transport` | condition strengthening: `((R <-> P) /\ R) -> P` |
 | `or_intro` | goal weakening: `Q -> Q \/ R` |
+| `nested_or_intro` | goal weakening: `Q \/ R -> (Q \/ R) \/ S` |
 | `not_not_intro` | goal weakening: `Q -> not not Q` |
+| `iff_goal_transport` | goal weakening: `Q -> ((Q <-> R) -> R)` |
+| `exists_intro_unit` | goal weakening: `Q -> exists _ : Unit, Q` |
+| `and_true_intro` | goal equivalence: `Q -> Q /\ True` |
+| `and_goal_projection_left` | goal weakening: `Q /\ R -> Q` |
+| `forall_specialization` | goal weakening: `forall x, P x -> P t` |
+| `symmetric_relation_goal` | relation registry: `Rel a b -> Rel b a` |
+| `pointwise_goal_unfold` | relation registry: structural relation to pointwise form |
 
 As in v1, every instantiated schema is first checked as a Lean probe theorem,
 and the expanded forest is checked again with `lake build`.
@@ -94,11 +104,11 @@ Latest verified v2 run:
 | Metric | Value |
 |---|---:|
 | Mode | `schema_v2` |
-| Generic schemas | 3 |
-| Condition / goal probes | 44 / 110 |
+| Active schemas | 12 |
+| Condition / goal probes | 226 / 442 |
 | Trees | 100 |
 | Depth | 3 |
 | Verified nodes / edges | 1366 / 1366 |
-| Condition / goal delta schemas | 44 / 110 |
+| Condition / goal delta schemas | 226 / 442 |
 | Empty delta edges | 0 |
 | Build result | success |
