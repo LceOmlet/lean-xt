@@ -5,7 +5,7 @@
   "file_path": "AlchemyTree/Depth3.lean",
   "ok": true,
   "build_returncode": 0,
-  "build_output_tail": "Build completed successfully.\n",
+  "build_output_tail": "✔ [798/800] Built AlchemyTree.Depth3\n✔ [799/800] Built AlchemyTree\nBuild completed successfully.\n",
   "variants": [
     {
       "child_name": "alchemy_tree_t0_condition_strengthened",
@@ -50,5 +50,5 @@
       "text": "theorem alchemy_tree_t0_condition_strengthened_goal_weakened {a b : ℕ} (hrel : IsRelPrime a b) :\n    forall {n : Nat}, n ∈ a.divisors.filter IsPrimePow -> n ∈ b.divisors.filter IsPrimePow -> False := by\n  apply Finset.disjoint_left.mp\n  apply alchemy_tree_t0\n  all_goals first\n    | assumption\n    | exact (Nat.coprime_iff_isRelPrime).2 hrel"
     }
   ],
-  "seconds": 1.114
+  "seconds": 3.694
 }

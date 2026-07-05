@@ -4,32 +4,11 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from lean_dojo import LeanGitRepo, trace
-from lean_dojo.data_extraction.traced_data import TracedFile
-
 from lean_xt import ConditionBridge, GoalBridge, modify_theorem_condition_goal
-
-
-def find_theorem(repo_path: Path, commit: str, theorem_name: str, file_path: Path):
-    cache_root = Path.home() / ".cache" / "lean_dojo" / f"gitpython-{repo_path.name}-{commit}" / repo_path.name
-    cached_ast = cache_root / ".lake" / "build" / "ir" / file_path.with_suffix(".ast.json")
-    repo = LeanGitRepo(str(repo_path), commit)
-    if cached_ast.exists():
-        traced_file = TracedFile.from_traced_file(cache_root, cached_ast, repo)
-        traced_file.traced_repo = SimpleNamespace(repo=repo, dependencies={})
-        for theorem in traced_file.get_traced_theorems():
-            if theorem.theorem.full_name == theorem_name:
-                return theorem
-
-    traced_repo = trace(repo, build_deps=False)
-    for theorem in traced_repo.get_traced_theorems():
-        if theorem.theorem.full_name == theorem_name:
-            return theorem
-    raise ValueError(f"Theorem not found: {theorem_name}")
+from lean_xt.leandojo import find_theorem
 
 
 def main() -> int:
@@ -49,7 +28,7 @@ def main() -> int:
             tactic="exact (Nat.coprime_iff_isRelPrime).2 hrel",
         )
         goal = GoalBridge(
-            new_goal="forall {n : Nat}, n ∈ a.divisors.filter IsPrimePow -> n ∈ b.divisors.filter IsPrimePow -> False",
+            new_goal="forall {n : Nat}, n \u2208 a.divisors.filter IsPrimePow -> n \u2208 b.divisors.filter IsPrimePow -> False",
             tactic="apply Finset.disjoint_left.mp",
         )
         variants = [
